@@ -49,6 +49,12 @@ class ExpenseOut(BaseModel):
     class Config:
         from_attributes = True
 
+class ExpenseCreateSubset(BaseModel):
+    paid_by_member_id: int
+    description: str
+    amount: Decimal
+    member_ids: List[int]
+
 class ExpenseCreateEqual(BaseModel):
     paid_by_member_id: int
     description: str

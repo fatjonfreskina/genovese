@@ -58,6 +58,13 @@ export const groupsApi = {
     amount: number
   }) => client.post<Expense>(`/groups/${groupId}/expenses/equal`, data),
 
+  addExpenseSubset: (groupId: string, data: {
+    paid_by_member_id: number
+    description: string
+    amount: number
+    member_ids: number[]
+  }) => client.post<Expense>(`/groups/${groupId}/expenses/subset`, data),
+
   addExpense: (groupId: string, data: {
     paid_by_member_id: number
     description: string

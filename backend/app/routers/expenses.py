@@ -96,6 +96,53 @@ def add_expense_equal(group_id: str, expense: schemas.ExpenseCreateEqual, db: Se
     db.refresh(db_expense)
     return db_expense
 
+@router.post("/subset", response_model=schemas.ExpenseOut)
+def add_expense_subset(group_id: str, expense: schemas.ExpenseCreateSubset, db: Session = Depends(get_db)):
+    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Gruppo non trovato")
+
+    payer = db.query(models.Member).filter(
+        models.Member.id == expense.paid_by_member_id,
+        models.Member.group_id == group_id
+    ).first()
+    if not payer:
+        raise HTTPException(status_code=400, detail="Il pagante non è membro del gruppo")
+
+    if len(expense.member_ids) < 1:
+        raise HTTPException(status_code=400, detail="Seleziona almeno un membro")
+
+    # Verifica che tutti i membri selezionati appartengano al gruppo
+    valid_ids = {m.id for m in db_group.members}
+    for mid in expense.member_ids:
+        if mid not in valid_ids:
+            raise HTTPException(status_code=400, detail=f"Membro {mid} non appartiene al gruppo")
+
+    n = len(expense.member_ids)
+    base_share = round(expense.amount / n, 2)
+    remainder = expense.amount - (base_share * n)
+
+    db_expense = models.Expense(
+        group_id=group_id,
+        paid_by_member_id=expense.paid_by_member_id,
+        description=expense.description,
+        amount=expense.amount,
+    )
+    db.add(db_expense)
+    db.flush()
+
+    for i, member_id in enumerate(expense.member_ids):
+        share = base_share + (remainder if i == 0 else Decimal("0"))
+        db_split = models.ExpenseSplit(
+            expense_id=db_expense.id,
+            member_id=member_id,
+            share_amount=share,
+        )
+        db.add(db_split)
+
+    db.commit()
+    db.refresh(db_expense)
+    return db_expense
 
 @router.delete("/{expense_id}", status_code=204)
 def delete_expense(group_id: str, expense_id: int, db: Session = Depends(get_db)):
