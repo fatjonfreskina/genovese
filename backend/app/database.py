@@ -6,7 +6,14 @@ import os
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DB_USER=os.getenv("DB_USER")
+DB_PASS=os.getenv("DB_PASS")
+HOST_NAME=os.getenv("HOST_NAME")
+HOST_PORT=os.getenv("HOST_PORT")
+DB_NAME=os.getenv("DB_NAME")
+
+# Create DB URL
+DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{HOST_NAME}:{HOST_PORT}/{DB_NAME}"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
