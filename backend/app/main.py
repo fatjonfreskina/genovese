@@ -9,14 +9,11 @@ allow_origins = os.getenv("ALLOW_ORIGINS")
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Equa API", version="0.1.0", root_path="/equa/api/v1")
+app = FastAPI(title="Equa API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://equa.fatjonfreskina.ddns.net",
-    ],
+    allow_origins=[allow_origins] if allow_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
