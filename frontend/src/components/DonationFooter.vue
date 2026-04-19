@@ -3,6 +3,8 @@
     <p>
       Equa è open source e gratis per sempre.
       <a href="https://github.com/fatjonfreskina/equa" target="_blank" class="text-green-600 hover:underline">Vedi il codice →</a>
+       <span class="text-gray-300 mx-1">·</span>
+      <span>v{{ APP_VERSION }}</span>
     </p>
     <div class="flex items-center justify-center gap-2 flex-wrap">
       <span>Ti è utile? Offrimi un caffè:</span>
@@ -25,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { APP_VERSION } from '../config'
 const amounts = [
   { label: '☕ 1€', value: 1 },
   { label: '🍕 2€', value: 2 },
