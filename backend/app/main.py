@@ -9,7 +9,7 @@ allow_origins = os.getenv("ALLOW_ORIGINS")
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Equa API", version="0.1.0")
+app = FastAPI(title="Equa API", version="1.1.1")
 
 app.add_middleware(
     CORSMiddleware,
