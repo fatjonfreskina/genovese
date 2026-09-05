@@ -7,7 +7,7 @@ Il versionamento segue [Semantic Versioning](https://semver.org/lang/it/).
 
 ---
 
-## [1.6.0] Frontend - 2026-09-04
+## [1.7.0] Frontend; Backend - 2026-09-05
 
 ### Aggiunto
 
@@ -20,8 +20,13 @@ Il versionamento segue [Semantic Versioning](https://semver.org/lang/it/).
 
 - Il campo valuta nella creazione del gruppo è ora presentato come “Valuta di default” e le spese mostrano sempre la propria valuta.
 - Totali, riepiloghi personali e messaggi di chiusura mantengono separati gli importi in valute diverse.
-- Sostituiti alert e conferme native con modali condivise mobile-first, pulsanti touch, semantica accessibile, gestione del focus e annullamento tramite Escape.
 - Le conferme di eliminazione indicano la spesa o il partecipante coinvolto; la cancellazione della cronologia chiarisce che non elimina i gruppi remoti.
+
+## [1.6.0] Frontend - 2026-09-04
+
+### Modificato
+
+- Sostituiti alert e conferme native con modali condivise mobile-first, pulsanti touch, semantica accessibile, gestione del focus e annullamento tramite Escape.
 
 ### Corretto
 
