@@ -12,6 +12,16 @@
         <p class="text-sm text-gray-400">Semplice, italiano, e gratis per sempre.</p>
       </div>
 
+      <aside
+        class="mb-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800"
+      >
+        <span class="font-semibold">Novità · Spese in più valute</span>
+        <p class="mt-1">
+          Registra ogni spesa nella sua valuta. Puoi vedere i conti separati o unificarli quando
+          serve.
+        </p>
+      </aside>
+
       <!-- Form crea gruppo -->
       <div class="bg-white rounded-2xl shadow p-6 mb-4">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">Crea un gruppo</h2>
@@ -41,16 +51,21 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Valuta</label>
+            <label for="group-currency" class="block text-sm font-medium text-gray-700 mb-1"
+              >Valuta di default</label
+            >
             <select
+              id="group-currency"
               v-model="form.currency"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
             >
-              <option value="EUR">EUR €</option>
-              <option value="USD">USD $</option>
-              <option value="GBP">GBP £</option>
-              <option value="CHF">CHF ₣</option>
+              <option v-for="currency in CURRENCIES" :key="currency.code" :value="currency.code">
+                {{ currency.code }} · {{ currency.name }}
+              </option>
             </select>
+            <p class="mt-1 text-xs text-gray-400">
+              Già selezionata nelle nuove spese; puoi cambiarla per ogni spesa.
+            </p>
           </div>
 
           <div>
@@ -98,11 +113,6 @@
           <div>
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-lg font-semibold text-gray-800">I tuoi gruppi recenti</h2>
-              <span
-                class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
-              >
-                Novità
-              </span>
             </div>
             <p class="text-sm text-gray-400">Salvati solo su questo dispositivo.</p>
           </div>
@@ -200,6 +210,7 @@ import FeedbackDialog from '../components/FeedbackDialog.vue'
 import { useFeedbackDialog } from '../composables/useFeedbackDialog'
 import equaLogo from '../assets/equa-logo.svg'
 import { trackEvent } from '../utils/analytics'
+import { CURRENCIES } from '../utils/currency'
 import {
   clearRecentGroups as clearStoredRecentGroups,
   getRecentGroups,

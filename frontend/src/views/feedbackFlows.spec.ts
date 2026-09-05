@@ -14,6 +14,8 @@ vi.mock('../api/groups', () => ({
     deleteMember: vi.fn(),
     getBalances: vi.fn(),
     getSettlements: vi.fn(),
+    getExchangeRate: vi.fn(),
+    addExpenseEqual: vi.fn(),
     updateStatus: vi.fn(),
   },
 }))
@@ -25,6 +27,7 @@ const group: Group = {
   currency: 'EUR',
   status: 'active',
   closing_count: 0,
+  closing_balance_mode: 'separate',
   created_at: '2026-09-02',
   members: [
     { id: 1, name: 'Anna' },
@@ -35,6 +38,12 @@ const group: Group = {
       id: 10,
       description: 'Cena',
       amount: 20,
+      currency: 'EUR',
+      expense_date: '2026-09-02',
+      exchange_rate: '1',
+      exchange_rate_date: '2026-09-02',
+      exchange_rate_source: 'identity',
+      converted_amount: '20.00',
       paid_by_member_id: 1,
       created_at: '2026-09-02',
       splits: [],
@@ -91,6 +100,16 @@ beforeEach(() => {
   vi.mocked(groupsApi.get).mockResolvedValue({ data: structuredClone(group) } as never)
   vi.mocked(groupsApi.getBalances).mockResolvedValue({ data: [] } as never)
   vi.mocked(groupsApi.getSettlements).mockResolvedValue({ data: [] } as never)
+  vi.mocked(groupsApi.getExchangeRate).mockResolvedValue({
+    data: {
+      currency: 'ALL',
+      target_currency: 'EUR',
+      rate: '0.01',
+      date: '2026-09-02',
+      source: 'frankfurter',
+    },
+  } as never)
+  vi.mocked(groupsApi.addExpenseEqual).mockResolvedValue({} as never)
   vi.mocked(groupsApi.deleteExpense).mockResolvedValue({} as never)
   vi.mocked(groupsApi.deleteMember).mockResolvedValue({} as never)
 })
@@ -152,6 +171,45 @@ it('keeps member deletion behind confirmation and displays backend constraints',
   await click('Rimuovi partecipante')
   expect(groupsApi.deleteMember).toHaveBeenCalledExactlyOnceWith('test-group', 1)
   expect(document.querySelector('dialog')?.textContent).toContain('Il partecipante ha spese.')
+})
+
+it('keeps multi-currency details progressive and closes with the selected balance mode', async () => {
+  const foreignExpense = {
+    ...group.expenses[0]!,
+    id: 11,
+    description: 'Taxi',
+    currency: 'ALL',
+    amount: 1000,
+    exchange_rate: '0.01',
+    exchange_rate_date: '2026-09-02',
+    exchange_rate_source: 'frankfurter' as const,
+    converted_amount: '10.00',
+  }
+  vi.mocked(groupsApi.get).mockResolvedValue({
+    data: { ...group, expenses: [...group.expenses, foreignExpense] },
+  } as never)
+  vi.mocked(groupsApi.updateStatus).mockResolvedValue({
+    data: {
+      ...group,
+      status: 'closing',
+      closing_balance_mode: 'unified',
+      expenses: [...group.expenses, foreignExpense],
+    },
+  } as never)
+
+  await mount(GroupView)
+  await click('⚖️ Bilanci')
+  expect(groupsApi.getBalances).toHaveBeenCalledWith('test-group', 'separate')
+  await click('Unifica in EUR')
+  expect(groupsApi.getBalances).toHaveBeenLastCalledWith('test-group', 'unified')
+  expect(document.body.textContent).toContain('Totale convertito:')
+
+  await click('Chiudiamo i conti')
+  expect(document.querySelector('dialog')?.textContent).toContain(
+    'I pagamenti saranno fissati in EUR',
+  )
+  await click('Inizia chiusura')
+  expect(groupsApi.updateStatus).toHaveBeenCalledWith('test-group', 'closing', 'unified')
 })
 
 it.each([

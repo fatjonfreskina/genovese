@@ -233,12 +233,7 @@
         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-green-100 bg-green-50 px-4 py-3"
       >
         <div class="min-w-0">
-          <span
-            class="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
-          >
-            Novità
-          </span>
-          <p class="mt-1 text-sm text-green-800">
+          <p class="text-sm text-green-800">
             Ritrova questo gruppo dalla home su questo dispositivo.
           </p>
         </div>
@@ -327,12 +322,24 @@
       <div v-if="activeTab === 'expenses'">
         <!-- Totale spese -->
         <div
-          class="bg-green-50 border border-green-100 rounded-xl px-5 py-3 mb-4 flex items-center justify-between"
+          class="bg-green-50 border border-green-100 rounded-xl px-5 py-3 mb-4 flex flex-wrap items-center justify-between gap-3"
         >
           <span class="text-sm text-green-700 font-medium">Totale spese</span>
-          <span class="text-lg font-bold text-green-700"
-            >{{ totalExpenses.toFixed(2) }} {{ group.currency }}</span
-          >
+          <div class="text-right">
+            <p
+              v-for="total in totalExpenses"
+              :key="total.currency"
+              class="text-lg font-bold text-green-700"
+            >
+              {{ formatCurrency(total.amount, total.currency) }}
+              <span v-if="hasForeignExpenses" class="text-xs font-medium">{{
+                total.currency
+              }}</span>
+            </p>
+            <p v-if="hasForeignExpenses" class="text-xs text-green-700">
+              Importi originali, senza conversioni
+            </p>
+          </div>
         </div>
 
         <!-- Bottone aggiungi -->
@@ -345,36 +352,150 @@
         </button>
 
         <!-- Form aggiunta / modifica spesa -->
-        <div v-if="showExpenseForm" class="bg-white rounded-2xl shadow p-5 mb-4">
+        <div v-if="showExpenseForm" id="expense-form" class="bg-white rounded-2xl shadow p-5 mb-4">
           <h3 class="font-semibold text-gray-800 mb-3">
             {{ editingExpenseId ? 'Modifica spesa' : 'Nuova spesa' }}
           </h3>
           <div class="space-y-3">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+              <label for="expense-description" class="block text-sm font-medium text-gray-700 mb-1"
+                >Descrizione</label
+              >
               <input
+                id="expense-description"
                 v-model="expenseForm.description"
                 type="text"
                 placeholder="Es. Cena al ristorante"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
               />
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="expense-amount" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Importo</label
+                >
+                <input
+                  id="expense-amount"
+                  v-model="expenseForm.amount"
+                  type="number"
+                  :min="currencyStep(expenseForm.currency)"
+                  :step="currencyStep(expenseForm.currency)"
+                  :placeholder="currencyDecimals(expenseForm.currency) ? '0.00' : '0'"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+              </div>
+              <div>
+                <label for="expense-currency" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Valuta</label
+                >
+                <select
+                  id="expense-currency"
+                  v-model="expenseForm.currency"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                >
+                  <option
+                    v-for="currency in CURRENCIES"
+                    :key="currency.code"
+                    :value="currency.code"
+                  >
+                    {{ currency.code }} · {{ currency.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Importo ({{ group.currency }})</label
+              <label for="expense-date" class="block text-sm font-medium text-gray-700 mb-1"
+                >Data della spesa</label
               >
               <input
-                v-model="expenseForm.amount"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
+                id="expense-date"
+                v-model="expenseForm.expense_date"
+                type="date"
+                :max="todayDate()"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
               />
             </div>
+            <details
+              v-if="expenseForm.currency !== group.currency"
+              class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+            >
+              <summary class="cursor-pointer font-medium text-gray-700">
+                Dettagli cambio · {{ exchangeRateCaption }}
+              </summary>
+              <p class="mt-2 text-xs text-gray-600">
+                Il cambio viene salvato con questa spesa e usato solo per unificare i conti in
+                {{ group.currency }}.
+              </p>
+              <p v-if="ratePreview && !manualRateOverride" class="mt-2 text-xs text-gray-600">
+                {{
+                  ratePreview.source === 'manual'
+                    ? 'Cambio manuale salvato'
+                    : 'Cambio di riferimento'
+                }}
+                del {{ formatExpenseDate(ratePreview.date) }}.
+                <span v-if="ratePreview.source === 'frankfurter'"
+                  >Fonte: Frankfurter. Può differire dall'addebito della banca.</span
+                >
+              </p>
+              <div v-if="manualRateOverride" class="mt-3">
+                <label for="expense-exchange-rate" class="block text-xs font-medium text-gray-700"
+                  >1 {{ expenseForm.currency }} in {{ group.currency }}</label
+                >
+                <input
+                  id="expense-exchange-rate"
+                  v-model="manualRate"
+                  type="number"
+                  min="0.000000000001"
+                  max="1000000000"
+                  step="0.000000000001"
+                  inputmode="decimal"
+                  class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  Inserisci il cambio concordato o quello applicato dalla banca.
+                </p>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-3">
+                <button
+                  v-if="!manualRateOverride"
+                  type="button"
+                  class="text-xs font-semibold text-green-700 underline"
+                  @click="enableManualRate"
+                >
+                  Modifica cambio
+                </button>
+                <button
+                  type="button"
+                  :disabled="rateLoading"
+                  class="text-xs font-semibold text-green-700 underline disabled:text-gray-400"
+                  @click="refreshAutomaticRate"
+                >
+                  {{ manualRateOverride ? 'Usa cambio automatico' : 'Aggiorna cambio automatico' }}
+                </button>
+              </div>
+            </details>
+            <p
+              v-if="expenseConvertedPreview !== null"
+              class="text-xs font-medium text-green-700"
+              aria-live="polite"
+            >
+              Controvalore: circa
+              {{ formatCurrency(expenseConvertedPreview, group.currency) }}
+            </p>
+            <p
+              v-if="rateError && !manualRateOverride && expenseForm.currency !== group.currency"
+              role="status"
+              class="text-xs text-amber-800"
+            >
+              {{ rateError }} Puoi salvare la spesa e completare il cambio più tardi: i bilanci
+              separati restano disponibili.
+            </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Pagato da</label>
+              <label for="expense-payer" class="block text-sm font-medium text-gray-700 mb-1"
+                >Pagato da</label
+              >
               <select
+                id="expense-payer"
                 v-model="expenseForm.paid_by_member_id"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
               >
@@ -385,8 +506,8 @@
               </select>
             </div>
 
-            <!-- Tipo split — nascosto in modifica perché usiamo sempre custom -->
-            <div v-if="!editingExpenseId">
+            <!-- Tipo di divisione -->
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Divisione</label>
               <div class="flex gap-2 flex-wrap">
                 <button
@@ -406,7 +527,7 @@
             </div>
 
             <!-- Split: seleziona persone -->
-            <div v-if="expenseForm.splitType === 'subset' && !editingExpenseId" class="space-y-2">
+            <div v-if="expenseForm.splitType === 'subset'" class="space-y-2">
               <p class="text-xs text-gray-500">Seleziona tra chi dividere equamente:</p>
               <div v-for="member in group.members" :key="member.id" class="flex items-center gap-2">
                 <input
@@ -420,9 +541,18 @@
                   {{ member.name }}
                 </label>
               </div>
-              <p v-if="expenseForm.subsetIds.length > 0" class="text-xs text-green-600">
-                {{ (parseFloat(expenseForm.amount) / expenseForm.subsetIds.length).toFixed(2) }}
-                {{ group.currency }} a testa
+              <p
+                v-if="expenseForm.subsetIds.length > 0 && Number(expenseForm.amount) > 0"
+                class="text-xs text-green-600"
+              >
+                Circa
+                {{
+                  formatCurrency(
+                    Number(expenseForm.amount) / expenseForm.subsetIds.length,
+                    expenseForm.currency,
+                  )
+                }}
+                a testa; gli eventuali resti sono distribuiti automaticamente.
               </p>
             </div>
 
@@ -434,14 +564,15 @@
                   v-model="expenseForm.customSplits[member.id]"
                   type="number"
                   min="0"
-                  step="0.01"
-                  placeholder="0.00"
+                  :step="currencyStep(expenseForm.currency)"
+                  :placeholder="currencyDecimals(expenseForm.currency) ? '0.00' : '0'"
+                  :aria-label="`Quota di ${member.name} in ${expenseForm.currency}`"
                   class="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                 />
               </div>
               <p :class="splitSumOk ? 'text-green-600' : 'text-red-500'" class="text-xs text-right">
-                Totale split: {{ splitSum.toFixed(2) }} /
-                {{ expenseForm.amount || 0 }}
+                Totale quote: {{ formatCurrency(splitSum, expenseForm.currency) }} /
+                {{ formatCurrency(expenseForm.amount || 0, expenseForm.currency) }}
               </p>
             </div>
 
@@ -487,10 +618,26 @@
                 Pagato da
                 <span class="font-medium">{{ memberName(expense.paid_by_member_id) }}</span>
               </p>
+              <p class="mt-1 text-xs text-gray-400">
+                {{ formatExpenseDate(expense.expense_date || expense.created_at.slice(0, 10)) }}
+              </p>
+              <p
+                v-if="(expense.currency || group.currency) !== group.currency"
+                class="mt-1 text-xs text-gray-500"
+              >
+                {{
+                  expense.converted_amount !== null && expense.converted_amount !== undefined
+                    ? `${formatCurrency(expense.converted_amount, group.currency)} con cambio salvato`
+                    : 'Cambio da completare per unificare i conti'
+                }}
+              </p>
             </div>
             <div class="flex items-center gap-3">
               <span class="font-bold text-green-700"
-                >{{ expense.amount }} {{ group.currency }}</span
+                >{{ formatCurrency(expense.amount, expense.currency || group.currency) }}
+                <span v-if="hasForeignExpenses" class="text-xs">{{
+                  expense.currency || group.currency
+                }}</span></span
               >
               <button
                 v-if="group.status === 'active'"
@@ -508,6 +655,93 @@
 
       <!-- Tab: Bilanci -->
       <div v-if="activeTab === 'balances'">
+        <section
+          v-if="hasForeignExpenses"
+          class="mb-4 rounded-xl border border-gray-200 bg-white p-4"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="font-semibold text-gray-800">
+                {{
+                  balanceMode === 'unified'
+                    ? `Conti unificati in ${group.currency}`
+                    : 'Conti per valuta'
+                }}
+              </h2>
+              <p class="mt-1 text-xs text-gray-500">
+                {{
+                  balanceMode === 'unified'
+                    ? 'Usiamo i cambi salvati sulle singole spese, senza aggiornarli.'
+                    : 'Ogni pagamento resta nella valuta originale.'
+                }}
+              </p>
+            </div>
+            <button
+              v-if="group.status === 'active' && hasForeignExpenses"
+              type="button"
+              class="rounded-lg border border-green-300 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50"
+              @click="balanceMode = balanceMode === 'separate' ? 'unified' : 'separate'"
+            >
+              {{
+                balanceMode === 'separate' ? `Unifica in ${group.currency}` : 'Mostra per valuta'
+              }}
+            </button>
+          </div>
+          <p v-if="group.status !== 'active'" class="mt-2 text-xs text-gray-500">
+            Modalità e pagamenti fissati all'inizio della chiusura. Per cambiarli, riapri i conti.
+          </p>
+          <p
+            v-if="balanceMode === 'unified' && !balancesLoading && !balancesError"
+            class="mt-3 text-sm font-medium text-green-700"
+          >
+            Totale convertito: {{ formatCurrency(unifiedTotal, group.currency) }}
+          </p>
+        </section>
+        <section
+          v-if="balancesError && !balancesLoading"
+          role="alert"
+          class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4"
+        >
+          <p class="font-semibold text-amber-900">{{ balancesError }}</p>
+          <p
+            v-if="balanceMode === 'unified' && missingRateExpenses.length"
+            class="mt-1 text-sm text-amber-800"
+          >
+            Completa il cambio di queste spese per ottenere un bilancio completo:
+          </p>
+          <ul v-if="balanceMode === 'unified' && missingRateExpenses.length" class="mt-2 space-y-2">
+            <li
+              v-for="expense in missingRateExpenses"
+              :key="expense.id"
+              class="flex flex-wrap items-center justify-between gap-2 text-sm text-amber-900"
+            >
+              <span>{{ expense.description }} · {{ expense.currency }}</span>
+              <button
+                v-if="group.status === 'active'"
+                type="button"
+                class="font-semibold underline"
+                @click="completeExpenseRate(expense)"
+              >
+                Completa cambio
+              </button>
+            </li>
+          </ul>
+          <button
+            type="button"
+            class="mt-3 text-sm font-semibold text-amber-900 underline"
+            @click="loadBalances"
+          >
+            Riprova
+          </button>
+          <button
+            v-if="group.status === 'active' && balanceMode === 'unified'"
+            type="button"
+            class="mt-3 ml-4 text-sm font-semibold text-amber-900 underline"
+            @click="balanceMode = 'separate'"
+          >
+            Torna ai conti per valuta
+          </button>
+        </section>
         <div
           v-if="group.status === 'closing'"
           class="mb-4 rounded-xl border border-amber-100 bg-amber-50 p-4"
@@ -549,53 +783,62 @@
           </p>
         </div>
         <section
-          v-if="!balancesLoading && group.status !== 'closed' && currentMemberId"
+          v-if="!balancesLoading && !balancesError && group.status !== 'closed' && currentMemberId"
           class="mb-4 border-y border-gray-200 bg-white px-4 py-4"
         >
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 class="font-semibold text-gray-800">Il tuo riepilogo</h2>
             <p class="text-xs text-gray-500">Come {{ currentMemberName }}</p>
           </div>
-          <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-            <div>
-              <p class="text-xs text-gray-500">Devi pagare</p>
-              <p class="mt-1 font-semibold text-red-600">
-                {{ formatGroupAmount(personalBalance.amountToPay) }}
-              </p>
-              <p class="mt-0.5 text-xs text-gray-400">
-                {{ paymentCountLabel(personalBalance.outgoingPayments) }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">Devi ricevere</p>
-              <p class="mt-1 font-semibold text-green-700">
-                {{ formatGroupAmount(personalBalance.amountToReceive) }}
-              </p>
-              <p class="mt-0.5 text-xs text-gray-400">
-                {{ paymentCountLabel(personalBalance.incomingPayments) }}
-              </p>
-            </div>
-            <div
-              class="col-span-2 border-t border-gray-100 pt-3 sm:col-span-1 sm:border-t-0 sm:pt-0"
-            >
-              <p class="text-xs text-gray-500">Saldo netto</p>
-              <p
-                :class="[
-                  'mt-1 font-semibold',
-                  personalBalance.netAmount > 0
-                    ? 'text-green-700'
-                    : personalBalance.netAmount < 0
-                      ? 'text-red-600'
-                      : 'text-gray-700',
-                ]"
+          <div
+            v-for="personalBalance in personalBalances"
+            :key="personalBalance.currency"
+            class="mt-3 border-t border-gray-100 pt-3"
+          >
+            <p v-if="hasForeignExpenses" class="mb-2 text-xs font-semibold text-gray-600">
+              {{ personalBalance.currency }}
+            </p>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <div>
+                <p class="text-xs text-gray-500">Devi pagare</p>
+                <p class="mt-1 font-semibold text-red-600">
+                  {{ formatCurrency(personalBalance.amountToPay, personalBalance.currency) }}
+                </p>
+                <p class="mt-0.5 text-xs text-gray-400">
+                  {{ paymentCountLabel(personalBalance.outgoingPayments) }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">Devi ricevere</p>
+                <p class="mt-1 font-semibold text-green-700">
+                  {{ formatCurrency(personalBalance.amountToReceive, personalBalance.currency) }}
+                </p>
+                <p class="mt-0.5 text-xs text-gray-400">
+                  {{ paymentCountLabel(personalBalance.incomingPayments) }}
+                </p>
+              </div>
+              <div
+                class="col-span-2 border-t border-gray-100 pt-3 sm:col-span-1 sm:border-t-0 sm:pt-0"
               >
-                {{ formatSignedGroupAmount(personalBalance.netAmount) }}
-              </p>
+                <p class="text-xs text-gray-500">Saldo netto</p>
+                <p
+                  :class="[
+                    'mt-1 font-semibold',
+                    personalBalance.netAmount > 0
+                      ? 'text-green-700'
+                      : personalBalance.netAmount < 0
+                        ? 'text-red-600'
+                        : 'text-gray-700',
+                  ]"
+                >
+                  {{ formatSignedAmount(personalBalance.netAmount, personalBalance.currency) }}
+                </p>
+              </div>
             </div>
           </div>
         </section>
         <div
-          v-else-if="!balancesLoading && group.status === 'active'"
+          v-else-if="!balancesLoading && !balancesError && group.status === 'active'"
           class="mb-4 flex items-center justify-between gap-3 border-y border-gray-200 bg-white px-4 py-3"
         >
           <p class="text-sm text-gray-600">Scegli chi sei per vedere il tuo riepilogo.</p>
@@ -608,7 +851,12 @@
           </button>
         </div>
         <section
-          v-if="!balancesLoading && group.status === 'active' && group.expenses.length > 0"
+          v-if="
+            !balancesLoading &&
+            !balancesError &&
+            group.status === 'active' &&
+            group.expenses.length > 0
+          "
           class="mb-4 rounded-xl border border-blue-100 bg-blue-50 p-4"
         >
           <div class="flex flex-wrap items-center gap-2">
@@ -631,6 +879,7 @@
           </button>
         </section>
         <div v-if="balancesLoading" class="text-center py-10 text-gray-400">Calcolo...</div>
+        <div v-else-if="balancesError"></div>
         <div v-else-if="group.status !== 'active'" class="space-y-3">
           <p v-if="settlementError" class="text-sm text-red-600">{{ settlementError }}</p>
           <p
@@ -654,7 +903,10 @@
                 <span class="font-medium">{{ displayMemberName(settlement.to_member_id) }}</span>
               </div>
               <span class="shrink-0 font-bold text-red-500"
-                >{{ settlement.amount }} {{ group.currency }}</span
+                >{{ formatCurrency(settlement.amount, settlement.currency || group.currency) }}
+                <span v-if="hasForeignExpenses" class="text-xs">{{
+                  settlement.currency || group.currency
+                }}</span></span
               >
             </div>
             <p class="mt-2 text-sm text-gray-500">{{ settlementLabel(settlement) }}</p>
@@ -694,7 +946,12 @@
               <span class="text-gray-400">→</span>
               <span class="font-medium">{{ displayMemberName(balance.to_member_id) }}</span>
             </div>
-            <span class="font-bold text-red-500">{{ balance.amount }} {{ group.currency }}</span>
+            <span class="shrink-0 font-bold text-red-500"
+              >{{ formatCurrency(balance.amount, balance.currency || group.currency) }}
+              <span v-if="hasForeignExpenses" class="text-xs">{{
+                balance.currency || group.currency
+              }}</span></span
+            >
           </div>
         </div>
       </div>
@@ -866,17 +1123,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { groupsApi, type Group, type Balance, type Expense, type Settlement } from '../api/groups'
+import {
+  groupsApi,
+  type Group,
+  type Balance,
+  type BalanceMode,
+  type Expense,
+  type ExpenseInput,
+  type ExchangeRate,
+  type Settlement,
+  type Split,
+} from '../api/groups'
 import DonationFooter from '../components/DonationFooter.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import { useFeedbackDialog } from '../composables/useFeedbackDialog'
 import { buildClosingSummary } from '../utils/closingSummary'
 import {
-  calculatePersonalBalanceSummary,
-  calculatePersonalSettlementSummary,
+  calculatePersonalBalancesByCurrency,
+  calculatePersonalSettlementsByCurrency,
 } from '../utils/personalBalanceSummary'
+import {
+  CURRENCIES,
+  currencyDecimals,
+  currencyStep,
+  formatCurrency,
+  todayDate,
+  expenseTotalsByCurrency,
+} from '../utils/currency'
 import { isRecentGroup, saveRecentGroup } from '../utils/recentGroups'
 import equaLogo from '../assets/equa-logo.svg'
 import { trackEvent } from '../utils/analytics'
@@ -897,6 +1172,9 @@ const showShareDialog = ref(route.query.created === '1')
 const savedLocally = ref(route.query.created === '1' || isRecentGroup(groupId))
 const activeTab = ref('expenses')
 const balancesLoading = ref(false)
+const balancesError = ref('')
+const balanceMode = ref<BalanceMode>('separate')
+let balancesRequest = 0
 const settlements = ref<Settlement[]>([])
 const settlementLoading = ref(false)
 const settlementError = ref('')
@@ -923,11 +1201,22 @@ const expenseError = ref('')
 const expenseForm = reactive({
   description: '',
   amount: '',
+  currency: 'EUR',
+  expense_date: todayDate(),
   paid_by_member_id: '' as number | string,
   splitType: 'equal',
   customSplits: {} as Record<number, string>,
   subsetIds: [] as number[],
 })
+const originalExpense = ref<Expense | null>(null)
+const ratePreview = ref<ExchangeRate | null>(null)
+const rateLoading = ref(false)
+const rateError = ref('')
+const manualRateOverride = ref(false)
+const manualRate = ref('')
+const refreshRateRequested = ref(false)
+const rateContextVersion = ref(0)
+let rateRequest = 0
 
 const showAddMemberForm = ref(false)
 const editingEmailId = ref<number | null>(null)
@@ -939,9 +1228,50 @@ const splitTypes = [
   { key: 'custom', label: 'Personalizzato' },
 ]
 
-const totalExpenses = computed(() => {
-  if (!group.value) return 0
-  return group.value.expenses.reduce((acc, e) => acc + parseFloat(String(e.amount)), 0)
+const totalExpenses = computed(() =>
+  expenseTotalsByCurrency(group.value?.expenses || [], group.value?.currency || 'EUR'),
+)
+const hasForeignExpenses = computed(
+  () =>
+    group.value?.expenses.some(
+      (expense) => (expense.currency || group.value?.currency) !== group.value?.currency,
+    ) || false,
+)
+const missingRateExpenses = computed(
+  () =>
+    group.value?.expenses.filter(
+      (expense) =>
+        (expense.currency || group.value?.currency) !== group.value?.currency &&
+        !expense.exchange_rate,
+    ) || [],
+)
+const unifiedTotal = computed(
+  () =>
+    group.value?.expenses.reduce(
+      (sum, expense) =>
+        sum +
+        Number(
+          expense.converted_amount ??
+            ((expense.currency || group.value?.currency) === group.value?.currency
+              ? expense.amount
+              : 0),
+        ),
+      0,
+    ) || 0,
+)
+const exchangeRateCaption = computed(() => {
+  if (manualRateOverride.value)
+    return `1 ${expenseForm.currency} = ${manualRate.value || '…'} ${group.value?.currency}`
+  if (rateLoading.value) return 'Recupero in corso…'
+  if (!ratePreview.value) return 'Da completare'
+  return `1 ${expenseForm.currency} = ${ratePreview.value.rate} ${group.value?.currency}`
+})
+const expenseConvertedPreview = computed(() => {
+  if (!group.value || expenseForm.currency === group.value.currency) return null
+  const amount = Number(expenseForm.amount)
+  const rate = Number(manualRateOverride.value ? manualRate.value : ratePreview.value?.rate)
+  if (!validCurrencyAmount(amount) || !Number.isFinite(rate) || rate <= 0) return null
+  return amount * rate
 })
 
 const groupStatusLabel = computed(() => {
@@ -970,12 +1300,18 @@ const currentMemberName = computed(() =>
   currentMemberId.value ? memberName(currentMemberId.value) : '',
 )
 
-const personalBalance = computed(() =>
-  currentMemberId.value
-    ? group.value?.status === 'closing'
-      ? calculatePersonalSettlementSummary(settlements.value, currentMemberId.value)
-      : calculatePersonalBalanceSummary(balances.value, currentMemberId.value)
-    : calculatePersonalBalanceSummary([], 0),
+const personalBalances = computed(() =>
+  group.value?.status === 'closing'
+    ? calculatePersonalSettlementsByCurrency(
+        settlements.value,
+        currentMemberId.value || 0,
+        group.value.currency,
+      )
+    : calculatePersonalBalancesByCurrency(
+        balances.value,
+        currentMemberId.value || 0,
+        group.value?.currency || 'EUR',
+      ),
 )
 
 const groupLink = computed(() => new URL(`/group/${groupId}`, window.location.origin).toString())
@@ -989,9 +1325,23 @@ const whatsAppShareUrl = computed(
   () => `https://wa.me/?text=${encodeURIComponent(shareMessage.value)}`,
 )
 
-const closingSummaryMessage = computed(() =>
-  group.value ? buildClosingSummary(group.value, balances.value, groupLink.value) : '',
-)
+const closingSummaryMessage = computed(() => {
+  if (!group.value) return ''
+  const summaryBalances =
+    group.value.status === 'active'
+      ? balances.value
+      : settlements.value
+          .filter((settlement) => settlement.status !== 'cancelled')
+          .map((settlement) => ({
+            from_member_id: settlement.from_member_id,
+            from_member_name: memberName(settlement.from_member_id),
+            to_member_id: settlement.to_member_id,
+            to_member_name: memberName(settlement.to_member_id),
+            amount: settlement.amount,
+            currency: settlement.currency || group.value!.currency,
+          }))
+  return buildClosingSummary(group.value, summaryBalances, groupLink.value)
+})
 
 const closingSummaryWhatsAppUrl = computed(
   () => `https://wa.me/?text=${encodeURIComponent(closingSummaryMessage.value)}`,
@@ -1002,14 +1352,22 @@ const splitSum = computed(() => {
 })
 
 const splitSumOk = computed(() => {
-  const amount = parseFloat(expenseForm.amount)
-  return Math.abs(splitSum.value - amount) < 0.02
+  const factor = 10 ** currencyDecimals(expenseForm.currency)
+  return (
+    validCurrencyAmount(Number(expenseForm.amount)) &&
+    Object.values(expenseForm.customSplits).every((value) =>
+      validCurrencyAmount(Number(value), true),
+    ) &&
+    Math.round(splitSum.value * factor) === Math.round(Number(expenseForm.amount) * factor)
+  )
 })
 
 async function loadGroup() {
   try {
     const res = await groupsApi.get(groupId)
     group.value = res.data
+    if (res.data.status !== 'active')
+      balanceMode.value = res.data.closing_balance_mode || 'separate'
     if (
       currentMemberId.value &&
       !res.data.members.some((member) => member.id === currentMemberId.value)
@@ -1029,21 +1387,39 @@ async function loadGroup() {
 }
 
 async function loadBalances() {
+  const request = ++balancesRequest
   balancesLoading.value = true
+  balancesError.value = ''
+  balances.value = []
+  settlements.value = []
   try {
-    const res = await groupsApi.getBalances(groupId)
-    balances.value = res.data
     if (group.value?.status !== 'active') {
       const settlementsResponse = await groupsApi.getSettlements(groupId)
-      settlements.value = settlementsResponse.data
+      if (request === balancesRequest)
+        settlements.value = settlementsResponse.data.filter(
+          (settlement) => settlement.status !== 'cancelled',
+        )
+    } else {
+      const res = await groupsApi.getBalances(groupId, balanceMode.value)
+      if (request === balancesRequest) balances.value = res.data
     }
+  } catch (cause: unknown) {
+    if (request !== balancesRequest) return
+    balancesError.value =
+      balanceMode.value === 'unified' && missingRateExpenses.value.length
+        ? 'Mancano alcuni cambi: il bilancio unificato non è ancora disponibile.'
+        : apiErrorMessage(cause, 'Non è stato possibile caricare i bilanci. Riprova.')
   } finally {
-    balancesLoading.value = false
+    if (request === balancesRequest) balancesLoading.value = false
   }
 }
 
 watch(activeTab, (tab) => {
   if (tab === 'balances') loadBalances()
+})
+
+watch(balanceMode, () => {
+  if (activeTab.value === 'balances') loadBalances()
 })
 
 function memberName(id: number) {
@@ -1054,16 +1430,20 @@ function displayMemberName(id: number) {
   return currentMemberId.value === id ? 'Tu' : memberName(id)
 }
 
-function formatGroupAmount(amount: number) {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: group.value?.currency || 'EUR',
-  }).format(amount)
+function formatSignedAmount(amount: number, currency: string) {
+  if (amount === 0) return formatCurrency(amount, currency)
+  return `${amount > 0 ? '+' : '-'}${formatCurrency(Math.abs(amount), currency)}`
 }
 
-function formatSignedGroupAmount(amount: number) {
-  if (amount === 0) return formatGroupAmount(amount)
-  return `${amount > 0 ? '+' : '-'}${formatGroupAmount(Math.abs(amount))}`
+function formatExpenseDate(date: string) {
+  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(
+    new Date(`${date}T12:00:00`),
+  )
+}
+
+function apiErrorMessage(cause: unknown, fallback: string) {
+  const detail = (cause as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  return typeof detail === 'string' ? detail : fallback
 }
 
 function paymentCountLabel(count: number) {
@@ -1106,14 +1486,91 @@ async function saveEmail(memberId: number) {
 }
 
 function resetExpenseForm() {
+  ++rateRequest
+  ++rateContextVersion.value
   expenseForm.description = ''
   expenseForm.amount = ''
+  expenseForm.currency = group.value?.currency || 'EUR'
+  expenseForm.expense_date = todayDate()
   expenseForm.paid_by_member_id = ''
   expenseForm.splitType = 'equal'
   expenseForm.customSplits = {}
   expenseForm.subsetIds = []
   expenseError.value = ''
   editingExpenseId.value = null
+  originalExpense.value = null
+  ratePreview.value = null
+  rateLoading.value = false
+  rateError.value = ''
+  manualRateOverride.value = false
+  manualRate.value = ''
+  refreshRateRequested.value = false
+}
+
+async function loadExchangeRate() {
+  const request = ++rateRequest
+  ratePreview.value = null
+  rateError.value = ''
+  rateLoading.value = false
+  if (
+    !showExpenseForm.value ||
+    !group.value ||
+    expenseForm.currency === group.value.currency ||
+    !expenseForm.expense_date
+  )
+    return
+  const expense = originalExpense.value
+  const sameRateContext =
+    expense &&
+    (expense.currency || group.value.currency) === expenseForm.currency &&
+    (expense.expense_date || expense.created_at.slice(0, 10)) === expenseForm.expense_date
+  if (sameRateContext && expense.exchange_rate && !refreshRateRequested.value) {
+    ratePreview.value = {
+      currency: expenseForm.currency,
+      target_currency: group.value.currency,
+      rate: expense.exchange_rate,
+      date: expense.exchange_rate_date || expenseForm.expense_date,
+      source: expense.exchange_rate_source || 'manual',
+    }
+    return
+  }
+  // Completing a saved expense with no rate is an explicit refresh on update.
+  if (sameRateContext && !expense.exchange_rate) refreshRateRequested.value = true
+  rateLoading.value = true
+  try {
+    const response = await groupsApi.getExchangeRate(
+      groupId,
+      expenseForm.currency,
+      expenseForm.expense_date,
+    )
+    if (request === rateRequest) ratePreview.value = response.data
+  } catch {
+    if (request === rateRequest) rateError.value = 'Cambio automatico non disponibile.'
+  } finally {
+    if (request === rateRequest) rateLoading.value = false
+  }
+}
+
+watch(
+  [() => expenseForm.currency, () => expenseForm.expense_date, showExpenseForm, rateContextVersion],
+  () => {
+    manualRateOverride.value = false
+    manualRate.value = ''
+    refreshRateRequested.value = false
+    void loadExchangeRate()
+  },
+)
+
+function enableManualRate() {
+  manualRate.value = ratePreview.value?.rate || ''
+  manualRateOverride.value = true
+}
+
+function refreshAutomaticRate() {
+  manualRateOverride.value = false
+  manualRate.value = ''
+  refreshRateRequested.value = true
+  void loadExchangeRate()
 }
 
 function openNewExpenseForm() {
@@ -1131,8 +1588,11 @@ function openEditExpenseForm(expense: Expense) {
   if (group.value?.status !== 'active') return
   resetExpenseForm()
   editingExpenseId.value = expense.id
+  originalExpense.value = expense
   expenseForm.description = expense.description
   expenseForm.amount = String(expense.amount)
+  expenseForm.currency = expense.currency || group.value.currency
+  expenseForm.expense_date = expense.expense_date || expense.created_at.slice(0, 10)
   expenseForm.paid_by_member_id = expense.paid_by_member_id
   expenseForm.splitType = 'custom'
   expense.splits.forEach((s) => {
@@ -1141,19 +1601,76 @@ function openEditExpenseForm(expense: Expense) {
   showExpenseForm.value = true
 }
 
+async function completeExpenseRate(expense: Expense) {
+  activeTab.value = 'expenses'
+  openEditExpenseForm(expense)
+  await nextTick()
+  document.getElementById('expense-form')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+}
+
 function cancelExpenseForm() {
   showExpenseForm.value = false
   resetExpenseForm()
 }
 
+function validCurrencyAmount(amount: number, allowZero = false) {
+  const minorUnits = amount * 10 ** currencyDecimals(expenseForm.currency)
+  return (
+    Number.isFinite(amount) &&
+    (allowZero ? amount >= 0 : amount > 0) &&
+    Math.abs(minorUnits - Math.round(minorUnits)) < 0.000001
+  )
+}
+
+function expenseSplits(): Split[] {
+  if (expenseForm.splitType === 'custom') {
+    return Object.entries(expenseForm.customSplits)
+      .filter(([, value]) => Number(value) > 0)
+      .map(([id, value]) => ({ member_id: Number(id), share_amount: Number(value) }))
+  }
+  const ids =
+    expenseForm.splitType === 'subset'
+      ? expenseForm.subsetIds
+      : group.value!.members.map((member) => member.id)
+  const factor = 10 ** currencyDecimals(expenseForm.currency)
+  const units = Math.round(Number(expenseForm.amount) * factor)
+  const share = Math.floor(units / ids.length)
+  const remainder = units % ids.length
+  return ids.map((id, index) => ({
+    member_id: id,
+    share_amount: (share + (index < remainder ? 1 : 0)) / factor,
+  }))
+}
+
 async function saveExpense() {
+  if (expenseLoading.value) return
   expenseError.value = ''
   if (!expenseForm.description.trim()) {
     expenseError.value = 'Inserisci una descrizione'
     return
   }
-  if (!expenseForm.amount || parseFloat(expenseForm.amount) <= 0) {
-    expenseError.value = 'Inserisci un importo valido'
+  if (
+    !validCurrencyAmount(Number(expenseForm.amount)) ||
+    Number(expenseForm.amount) > 99_999_999.99
+  ) {
+    expenseError.value = `Inserisci un importo positivo con al massimo ${currencyDecimals(expenseForm.currency)} decimali per ${expenseForm.currency}.`
+    return
+  }
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(expenseForm.expense_date) ||
+    expenseForm.expense_date > todayDate()
+  ) {
+    expenseError.value = 'Inserisci la data effettiva della spesa, non successiva a oggi.'
+    return
+  }
+  if (
+    manualRateOverride.value &&
+    (!/^\d+(\.\d{1,12})?$/.test(String(manualRate.value)) ||
+      !Number.isFinite(Number(manualRate.value)) ||
+      Number(manualRate.value) < 0.000000000001 ||
+      Number(manualRate.value) > 1_000_000_000)
+  ) {
+    expenseError.value = 'Inserisci un cambio positivo con al massimo 12 decimali.'
     return
   }
   if (!expenseForm.paid_by_member_id) {
@@ -1161,63 +1678,55 @@ async function saveExpense() {
     return
   }
   if (expenseForm.splitType === 'custom' && !splitSumOk.value) {
-    expenseError.value = 'La somma degli split non corrisponde al totale'
+    expenseError.value =
+      'Le quote devono essere valide per questa valuta e la loro somma deve corrispondere esattamente al totale.'
+    return
+  }
+  if (expenseForm.splitType === 'subset' && !expenseForm.subsetIds.length) {
+    expenseError.value = 'Seleziona almeno una persona'
     return
   }
 
   expenseLoading.value = true
   try {
+    const data: ExpenseInput = {
+      paid_by_member_id: Number(expenseForm.paid_by_member_id),
+      description: expenseForm.description.trim(),
+      amount: Number(expenseForm.amount),
+      currency: expenseForm.currency,
+      expense_date: expenseForm.expense_date,
+      ...(manualRateOverride.value ? { exchange_rate: String(manualRate.value) } : {}),
+      ...(refreshRateRequested.value && !manualRateOverride.value
+        ? { refresh_exchange_rate: true }
+        : {}),
+    }
     if (editingExpenseId.value) {
-      const splits = Object.entries(expenseForm.customSplits)
-        .filter(([, v]) => parseFloat(v) > 0)
-        .map(([id, v]) => ({
-          member_id: parseInt(id),
-          share_amount: parseFloat(v),
-        }))
       await groupsApi.updateExpense(groupId, editingExpenseId.value, {
-        paid_by_member_id: expenseForm.paid_by_member_id as number,
-        description: expenseForm.description.trim(),
-        amount: parseFloat(expenseForm.amount),
-        splits,
+        ...data,
+        splits: expenseSplits(),
       })
     } else if (expenseForm.splitType === 'equal') {
-      await groupsApi.addExpenseEqual(groupId, {
-        paid_by_member_id: expenseForm.paid_by_member_id as number,
-        description: expenseForm.description.trim(),
-        amount: parseFloat(expenseForm.amount),
-      })
+      await groupsApi.addExpenseEqual(groupId, data)
     } else if (expenseForm.splitType === 'subset') {
-      if (expenseForm.subsetIds.length === 0) {
-        expenseError.value = 'Seleziona almeno una persona'
-        expenseLoading.value = false
-        return
-      }
       await groupsApi.addExpenseSubset(groupId, {
-        paid_by_member_id: expenseForm.paid_by_member_id as number,
-        description: expenseForm.description.trim(),
-        amount: parseFloat(expenseForm.amount),
+        ...data,
         member_ids: expenseForm.subsetIds,
       })
     } else {
-      const splits = Object.entries(expenseForm.customSplits)
-        .filter(([, v]) => parseFloat(v) > 0)
-        .map(([id, v]) => ({
-          member_id: parseInt(id),
-          share_amount: parseFloat(v),
-        }))
       await groupsApi.addExpense(groupId, {
-        paid_by_member_id: expenseForm.paid_by_member_id as number,
-        description: expenseForm.description.trim(),
-        amount: parseFloat(expenseForm.amount),
-        splits,
+        ...data,
+        splits: expenseSplits(),
       })
     }
     await loadGroup()
     if (!editingExpenseId.value) trackEvent('expense_created')
     showExpenseForm.value = false
     resetExpenseForm()
-  } catch {
-    expenseError.value = 'Errore nel salvataggio. Riprova.'
+  } catch (cause: unknown) {
+    expenseError.value = apiErrorMessage(
+      cause,
+      'Errore nel salvataggio. Controlla i dati e riprova.',
+    )
   } finally {
     expenseLoading.value = false
   }
@@ -1409,8 +1918,13 @@ async function updateGroupStatus(status: Group['status']) {
   statusError.value = ''
   statusLoading.value = true
   try {
-    const response = await groupsApi.updateStatus(groupId, status)
+    const response =
+      status === 'closing'
+        ? await groupsApi.updateStatus(groupId, status, balanceMode.value)
+        : await groupsApi.updateStatus(groupId, status)
     group.value = response.data
+    balanceMode.value =
+      status === 'active' ? 'separate' : response.data.closing_balance_mode || balanceMode.value
     if (status === 'closing') trackEvent('closing_started')
     if (status === 'closed') {
       showCelebration.value = true
@@ -1419,7 +1933,7 @@ async function updateGroupStatus(status: Group['status']) {
     showExpenseForm.value = false
     showAddMemberForm.value = false
     cancelEditEmail()
-    if (activeTab.value === 'balances') await loadBalances()
+    if (activeTab.value === 'balances' || status === 'closing') await loadBalances()
     return true
   } catch (e: any) {
     statusError.value =
@@ -1431,12 +1945,11 @@ async function updateGroupStatus(status: Group['status']) {
 }
 
 async function startClosing() {
-  if (statusLoading.value) return
+  if (statusLoading.value || balancesLoading.value || balancesError.value) return
   if (
     !(await askConfirmation({
       title: 'Iniziare la chiusura dei conti?',
-      message:
-        'Spese e partecipanti saranno bloccati per verificare i saldi. Potrai riaprire i conti se serve una correzione.',
+      message: `${balanceMode.value === 'unified' ? `I pagamenti saranno fissati in ${group.value?.currency}, usando i cambi salvati sulle spese.` : 'I pagamenti saranno fissati separatamente per ogni valuta, senza conversioni.'} Spese e partecipanti saranno bloccati. Potrai riaprire i conti se serve una correzione.`,
       confirmLabel: 'Inizia chiusura',
     }))
   )

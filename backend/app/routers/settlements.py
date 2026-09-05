@@ -9,7 +9,13 @@ router = APIRouter(prefix="/groups/{group_id}/settlements", tags=["settlements"]
 
 
 def get_closing_group(group_id: str, db: Session):
-    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    group = (
+        db.query(models.Group)
+        .filter(models.Group.id == group_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
     if not group:
         raise HTTPException(status_code=404, detail="Gruppo non trovato")
     if group.status != "closing":

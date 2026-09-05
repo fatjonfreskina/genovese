@@ -9,8 +9,17 @@ Il versionamento segue [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [1.6.0] Frontend - 2026-09-04
 
+### Aggiunto
+
+- Spese in più valute con valuta di default del gruppo, data effettiva, cambio storico salvato e correzione manuale facoltativa.
+- Bilanci separati per valuta e vista unificata su richiesta; la modalità scelta viene congelata nei pagamenti durante la chiusura.
+- Supporto per lek albanese, yen e altre valute principali, con precisione e arrotondamenti coerenti con l'unità minima.
+- Migrazione `004` con rollback protetto, test backend/frontend e documentazione del flusso multi-valuta.
+
 ### Modificato
 
+- Il campo valuta nella creazione del gruppo è ora presentato come “Valuta di default” e le spese mostrano sempre la propria valuta.
+- Totali, riepiloghi personali e messaggi di chiusura mantengono separati gli importi in valute diverse.
 - Sostituiti alert e conferme native con modali condivise mobile-first, pulsanti touch, semantica accessibile, gestione del focus e annullamento tramite Escape.
 - Le conferme di eliminazione indicano la spesa o il partecipante coinvolto; la cancellazione della cronologia chiarisce che non elimina i gruppi remoti.
 
