@@ -31,7 +31,13 @@ def lookup_exchange_rate(currency: str, target_currency: str, expense_date: date
         f"?date={expense_date.isoformat()}"
     )
     try:
-        request = Request(url, headers={"Accept": "application/json"})
+        request = Request(
+            url,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "Equa/1.0",
+            },
+        )
         with urlopen(request, timeout=3) as response:
             body = response.read(65537)
         if len(body) > 65536:

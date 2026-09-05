@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from backend.app import models, schemas
 from backend.app.currency import equal_shares, latest_expense_date
 from backend.app.database import Base
+from backend.app import exchange_rates
 from backend.app.exchange_rates import ExchangeRate
 from backend.app.routers import expenses, groups
 from backend.app.routers.balances import calculate_balances
@@ -65,6 +66,33 @@ def update_payload(expense, **overrides):
     )
     fields.update(overrides)
     return schemas.ExpenseCreate(**fields)
+
+
+def test_lookup_exchange_rate_identifies_as_http_client(monkeypatch):
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, limit):
+            return b'{"date":"2026-09-05","base":"USD","quote":"EUR","rate":0.86006}'
+
+    def fake_urlopen(request, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setattr(exchange_rates, "urlopen", fake_urlopen)
+
+    rate = exchange_rates.lookup_exchange_rate("USD", "EUR", date(2026, 9, 5))
+
+    assert rate.rate == Decimal("0.860060000000")
+    assert captured["request"].get_header("User-agent") == "Equa/1.0"
+    assert captured["timeout"] == 3
 
 
 def test_original_currency_and_historical_rate_are_saved(db, group, monkeypatch):
