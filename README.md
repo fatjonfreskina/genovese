@@ -116,6 +116,7 @@ Vue 3 · TypeScript · Vite · Tailwind CSS · FastAPI · SQLAlchemy · MySQL
 - [Roadmap di prodotto](doc/ROADMAP.md)
 - [Changelog](doc/CHANGELOG.md)
 - [Strategia e comandi di test](doc/TESTING.md)
+- [Spese, cambi e bilanci multi-valuta](doc/MULTICURRENCY.md)
 - [Migrazioni database](backend/migrations/README.md)
 - [Metriche anonime](doc/ANALYTICS.md)
 

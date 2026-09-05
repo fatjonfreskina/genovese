@@ -1,7 +1,11 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..database import get_db
+from ..currency import MAX_AMOUNT, latest_expense_date, validate_currency
+from ..exchange_rates import lookup_exchange_rate
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -45,7 +49,13 @@ def update_group_status(
     payload: schemas.GroupStatusUpdate,
     db: Session = Depends(get_db),
 ):
-    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    db_group = (
+        db.query(models.Group)
+        .filter(models.Group.id == group_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
     if not db_group:
         raise HTTPException(status_code=404, detail="Gruppo non trovato")
 
@@ -68,14 +78,22 @@ def update_group_status(
     if payload.status == "closing":
         from .balances import calculate_balances
 
+        balances = calculate_balances(db_group, payload.balance_mode)
+        if any(balance.amount > MAX_AMOUNT for balance in balances):
+            raise HTTPException(
+                status_code=409,
+                detail="Un pagamento supera il limite di importo consentito",
+            )
+        db_group.closing_balance_mode = payload.balance_mode
         db_group.closing_count += 1
-        for balance in calculate_balances(db_group):
+        for balance in balances:
             db.add(
                 models.Settlement(
                     group_id=group_id,
                     from_member_id=balance.from_member_id,
                     to_member_id=balance.to_member_id,
                     amount=balance.amount,
+                    currency=balance.currency,
                 )
             )
 
@@ -98,6 +116,37 @@ def update_group_status(
     db.commit()
     db.refresh(db_group)
     return db_group
+
+
+@router.get("/{group_id}/exchange-rate", response_model=schemas.ExchangeRateOut)
+def get_exchange_rate(
+    group_id: str,
+    currency: str,
+    expense_date: date,
+    db: Session = Depends(get_db),
+):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Gruppo non trovato")
+    try:
+        currency = validate_currency(currency)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if expense_date > latest_expense_date():
+        raise HTTPException(status_code=422, detail="La data non può essere futura")
+    rate = lookup_exchange_rate(currency, group.currency, expense_date)
+    if rate is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Cambio automatico non disponibile. Puoi inserirlo manualmente o salvare la spesa senza cambio",
+        )
+    return schemas.ExchangeRateOut(
+        currency=rate.currency,
+        target_currency=rate.target_currency,
+        rate=rate.rate,
+        date=rate.date,
+        source=rate.source,
+    )
 
 
 @router.delete("/{group_id}", status_code=204)

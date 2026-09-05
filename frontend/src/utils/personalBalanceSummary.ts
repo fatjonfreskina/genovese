@@ -1,4 +1,5 @@
 import type { Balance, Settlement } from '../api/groups'
+import { compareCurrencies } from './currency'
 
 export interface PersonalBalanceSummary {
   amountToPay: number
@@ -16,11 +17,11 @@ export function calculatePersonalBalanceSummary(
     (summary, balance) => {
       const amount = Number(balance.amount)
       if (balance.from_member_id === memberId) {
-        summary.amountToPay += amount
+        summary.amountToPay = Math.round((summary.amountToPay + amount) * 100) / 100
         summary.outgoingPayments += 1
       }
       if (balance.to_member_id === memberId) {
-        summary.amountToReceive += amount
+        summary.amountToReceive = Math.round((summary.amountToReceive + amount) * 100) / 100
         summary.incomingPayments += 1
       }
       return summary
@@ -35,7 +36,8 @@ export function calculatePersonalBalanceSummary(
 
   return {
     ...personalBalances,
-    netAmount: personalBalances.amountToReceive - personalBalances.amountToPay,
+    netAmount:
+      Math.round((personalBalances.amountToReceive - personalBalances.amountToPay) * 100) / 100,
   }
 }
 
@@ -51,7 +53,52 @@ export function calculatePersonalSettlementSummary(
       to_member_id: settlement.to_member_id,
       to_member_name: '',
       amount: settlement.amount,
+      currency: settlement.currency,
     }))
 
   return calculatePersonalBalanceSummary(pendingBalances, memberId)
+}
+
+export interface PersonalCurrencySummary extends PersonalBalanceSummary {
+  currency: string
+}
+
+export function calculatePersonalBalancesByCurrency(
+  balances: Balance[],
+  memberId: number,
+  defaultCurrency: string,
+): PersonalCurrencySummary[] {
+  const currencies = new Set(balances.map((balance) => balance.currency || defaultCurrency))
+  if (!currencies.size) currencies.add(defaultCurrency)
+  return [...currencies]
+    .sort((a, b) => compareCurrencies(a, b, defaultCurrency))
+    .map((currency) => ({
+      currency,
+      ...calculatePersonalBalanceSummary(
+        balances.filter((balance) => (balance.currency || defaultCurrency) === currency),
+        memberId,
+      ),
+    }))
+}
+
+export function calculatePersonalSettlementsByCurrency(
+  settlements: Settlement[],
+  memberId: number,
+  defaultCurrency: string,
+): PersonalCurrencySummary[] {
+  const currencies = new Set(
+    settlements
+      .filter((settlement) => settlement.status !== 'cancelled')
+      .map((settlement) => settlement.currency || defaultCurrency),
+  )
+  if (!currencies.size) currencies.add(defaultCurrency)
+  return [...currencies]
+    .sort((a, b) => compareCurrencies(a, b, defaultCurrency))
+    .map((currency) => ({
+      currency,
+      ...calculatePersonalSettlementSummary(
+        settlements.filter((settlement) => (settlement.currency || defaultCurrency) === currency),
+        memberId,
+      ),
+    }))
 }

@@ -13,6 +13,7 @@ const group = (id: string, name = 'Vacanza') => ({
   currency: 'EUR',
   status: 'active' as const,
   closing_count: 0,
+  closing_balance_mode: 'separate' as const,
   created_at: '2026-08-26T12:00:00Z',
   members: [{ id: 1, name: 'Giulia' }],
   expenses: [],

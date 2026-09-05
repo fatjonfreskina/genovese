@@ -9,7 +9,7 @@ origins = [o.strip() for o in allow_origins.split(",") if o.strip()]
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Equa API", version="1.5.0")
+app = FastAPI(title="Equa API", version="1.7.0")
 
 app.add_middleware(
     CORSMiddleware,

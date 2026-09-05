@@ -40,7 +40,7 @@ La roadmap e ordinata per impatto e dipendenze, non per data rigida. Le funziona
 - [x] Generare un riepilogo di chiusura condivisibile e versionato.
 - [x] Introdurre lo stato dei pagamenti.
 - [x] Mostrare lo stato di chiusura del gruppo.
-- [ ] Gestire spese in più valute nello stesso gruppo.
+- [x] Gestire spese in più valute nello stesso gruppo.
 
 ### Collaborazione
 
@@ -553,40 +553,41 @@ Il messaggio deve restare leggibile su mobile e contenere solo dati già accessi
 
 ### 6.7 Spese in più valute
 
-**Stato: funzionalità futura**
+**Stato: implementata con la issue #19**
 
 **Checklist**
 
-- [ ] Mantenere una valuta base del gruppo per bilanci e pagamenti finali.
-- [ ] Consentire di scegliere la valuta originale per ogni spesa.
-- [ ] Salvare importo originale, valuta originale e tasso di conversione applicato.
-- [ ] Mostrare prima del salvataggio l'importo convertito nella valuta base.
-- [ ] Consentire l'inserimento e la correzione manuale del tasso di cambio.
-- [ ] Valutare un provider opzionale per suggerire i tassi senza renderlo necessario al funzionamento.
-- [ ] Conservare il tasso usato dalla spesa, evitando che variazioni future cambino i saldi storici.
-- [ ] Mostrare nel riepilogo gli importi originali per valuta e il totale nella valuta base.
-- [ ] Aggiungere migrazione, validazione backend e test su precisione e arrotondamenti.
+- [x] Mantenere una valuta di default del gruppo per inserimento e bilanci unificati.
+- [x] Consentire di scegliere la valuta originale per ogni spesa.
+- [x] Salvare importo originale, valuta originale e tasso di conversione applicato.
+- [x] Mostrare prima del salvataggio l'importo convertito nella valuta di default.
+- [x] Consentire l'inserimento e la correzione manuale del tasso di cambio.
+- [x] Usare un provider opzionale per suggerire i tassi senza renderlo necessario al salvataggio.
+- [x] Conservare il tasso usato dalla spesa, evitando che variazioni future cambino i saldi storici.
+- [x] Mostrare nel riepilogo gli importi originali per valuta e il totale nella valuta di default.
+- [x] Aggiungere migrazione, validazione backend e test su precisione e arrotondamenti.
 
-Un gruppo continua ad avere una valuta base, usata come unica unità per saldi e settlement. Ogni spesa può avere una valuta diversa e conserva una fotografia del tasso applicato al momento del salvataggio. Modificare un tasso deve essere un'azione esplicita e deve ricalcolare i saldi in modo deterministico.
+Un gruppo continua ad avere una valuta di default. I bilanci sono separati per valuta; su richiesta possono essere unificati nella valuta di default. Ogni spesa conserva una fotografia del tasso applicato al momento del salvataggio. Modificare un tasso è un'azione esplicita e ricalcola i saldi in modo deterministico.
 
-La prima versione deve funzionare senza rete e con tassi inseriti manualmente. Un eventuale servizio esterno può suggerire il cambio, ma il valore accettato deve essere visibile e persistito; non devono essere inviati al provider nomi, descrizioni, partecipanti o importi delle spese.
+Il salvataggio della spesa deve funzionare anche quando il provider dei cambi non è disponibile. Il cambio manuale resta possibile; il valore usato deve essere visibile e persistito. Non devono essere inviati al provider nomi, descrizioni, partecipanti o importi delle spese.
 
 #### Modello dati proposto
 
-Per ogni spesa aggiungere:
+Per ogni spesa sono presenti:
 
-- `original_amount` con precisione decimale;
-- `original_currency` come codice ISO 4217;
-- `exchange_rate` verso la valuta base del gruppo;
-- mantenere `amount` come importo convertito nella valuta base, calcolato e validato dal backend.
+- `amount` e gli split nella valuta originale;
+- `currency` come codice dal catalogo supportato;
+- `expense_date` come data effettiva della spesa;
+- `exchange_rate`, `exchange_rate_date` ed `exchange_rate_source` verso la valuta di default;
+- `converted_amount` calcolato dal backend e non salvato come secondo importo modificabile.
 
 #### Criteri di completamento
 
-- Gruppi con una sola valuta continuano a funzionare senza passaggi aggiuntivi.
-- I saldi sono riproducibili usando i tassi salvati, anche senza accesso a Internet.
-- UI e messaggi distinguono chiaramente importo originale e importo convertito.
-- Arrotondamenti e somma degli split restano coerenti al centesimo nella valuta base.
-- La migrazione preserva tutte le spese esistenti assegnando loro la valuta base del gruppo.
+- [x] Gruppi con una sola valuta continuano a funzionare senza passaggi aggiuntivi.
+- [x] I saldi sono riproducibili usando i tassi salvati, anche senza accesso a Internet.
+- [x] UI e messaggi distinguono chiaramente importo originale e importo convertito.
+- [x] Arrotondamenti e somma degli split rispettano l'unità minima della valuta.
+- [x] La migrazione preserva tutte le spese esistenti assegnando loro la valuta del gruppo.
 
 ---
 
@@ -1107,7 +1108,7 @@ Prima di procedere servono analisi legale, sicurezza, costi e domanda reale degl
 - [x] Riepilogo WhatsApp della chiusura.
 - [x] Stato dei pagamenti.
 - [x] Schermata di gruppo chiuso.
-- [ ] Spese in più valute con conversione tracciabile.
+- [x] Spese in più valute con conversione tracciabile.
 
 **Risultato atteso:** piu ritorni nei giorni successivi e meno pagamenti dimenticati.
 

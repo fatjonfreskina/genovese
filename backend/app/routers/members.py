@@ -8,7 +8,13 @@ router = APIRouter(prefix="/groups/{group_id}/members", tags=["members"])
 
 
 def get_editable_group(group_id: str, db: Session):
-    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    db_group = (
+        db.query(models.Group)
+        .filter(models.Group.id == group_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
     if not db_group:
         raise HTTPException(status_code=404, detail="Gruppo non trovato")
     if db_group.status != "active":
