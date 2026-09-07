@@ -17,6 +17,7 @@ vi.mock('../api/groups', () => ({
     getExchangeRate: vi.fn(),
     addExpenseEqual: vi.fn(),
     updateStatus: vi.fn(),
+    emailLinkOptions: vi.fn(),
   },
 }))
 
@@ -112,6 +113,7 @@ beforeEach(() => {
   vi.mocked(groupsApi.addExpenseEqual).mockResolvedValue({} as never)
   vi.mocked(groupsApi.deleteExpense).mockResolvedValue({} as never)
   vi.mocked(groupsApi.deleteMember).mockResolvedValue({} as never)
+  vi.mocked(groupsApi.emailLinkOptions).mockResolvedValue({ data: { enabled: false } } as never)
 })
 
 afterEach(() => {
@@ -130,6 +132,34 @@ it('clears only local history and only after confirmation', async () => {
   await click('Cancella tutto')
   await click('Cancella cronologia')
   expect(getRecentGroups()).toHaveLength(0)
+})
+
+it.each(['active', 'closing', 'closed'] as const)(
+  'shows reuse and public sharing only for closed groups (%s)',
+  async (status) => {
+    vi.mocked(groupsApi.get).mockResolvedValue({ data: { ...group, status } } as never)
+    await mount(GroupView)
+    expect(document.body.textContent?.includes('Consiglia Equa')).toBe(status === 'closed')
+  },
+)
+
+it('keeps group creation and sharing usable when email is disabled', async () => {
+  await mount(GroupView, '/group/test-group?created=1')
+  expect(document.body.textContent).toContain('Condividi il link del gruppo')
+  expect(document.body.textContent).not.toContain('Conserva via email')
+  await click('Continua al gruppo')
+  expect(document.querySelector('[aria-labelledby=share-reminder-title]')).toBeNull()
+})
+
+it('uses a native modal for the share/email panel and allows Escape cancellation', async () => {
+  await mount(GroupView, '/group/test-group?created=1')
+  const modal = document.querySelector<HTMLDialogElement>(
+    'dialog[aria-labelledby=share-reminder-title]',
+  )!
+  expect(modal.open).toBe(true)
+  modal.dispatchEvent(new Event('cancel', { cancelable: true }))
+  await flush()
+  expect(document.querySelector('[aria-labelledby=share-reminder-title]')).toBeNull()
 })
 
 it('deletes the named expense only after confirmation and shows API failures', async () => {

@@ -23,3 +23,11 @@ Il rollback `004_add_multi_currency_rollback.sql` va eseguito prima di `003`, a 
 Questi script devono essere verificati sul MySQL di destinazione/staging; i test applicativi SQLite non sostituiscono una prova di migrazione o rollback MySQL.
 
 Le frazioni eventualmente presenti in importi storici di valute ora trattate senza decimali (JPY, KRW, VND, CLP, ISK) non vengono arrotondate dalla migrazione e rimangono esatte nei saldi separati. Le nuove spese e le modifiche agli importi devono rispettare i decimali della valuta. La data spesa è una data di calendario: il client propone oggi nel fuso locale; il backend ammette al massimo domani rispetto a UTC per non rifiutare l'oggi dei client con fuso in anticipo. Il tasso automatico non può mai essere datato dopo la data spesa richiesta.
+
+## Link via email (005)
+
+La migrazione `005_email_link_challenges.sql`, da eseguire una sola volta dopo la `004` sui database esistenti, aggiunge le verifiche temporanee e i contatori anti-abuso per conservare il link via email. Non modifica gruppi, membri, spese o saldi e non contiene colonne con indirizzi email. Le nuove installazioni ricevono le due tabelle da `create_all()`.
+
+Prima del rollback `005_email_link_challenges_rollback.sql`, arresta il backend aggiornato (altrimenti `create_all()` ricreerebbe le tabelle) e distribuisci la versione precedente. Il rollback elimina soltanto codici pendenti e contatori temporanei: i gruppi restano intatti. Procedi poi con `004`, `003`, `002`, `001` solo se intendi annullare anche quelle funzionalità.
+
+L'invio è disattivato per default. Configurazione del microservizio, informativa privacy e pulizia periodica sono descritti in [`doc/EMAIL_LINK.md`](../../doc/EMAIL_LINK.md). Le migrazioni non inviano email.

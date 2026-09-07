@@ -8,15 +8,19 @@
 
     <div v-else-if="group">
       <!-- Promemoria mostrato solo subito dopo la creazione del gruppo -->
-      <div
+      <dialog
         v-if="showShareDialog"
-        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+        ref="shareDialogElement"
+        class="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none items-end justify-center border-0 bg-black/40 p-4 open:flex backdrop:bg-transparent sm:items-center"
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-reminder-title"
         @click.self="closeShareDialog"
+        @cancel.prevent="closeShareDialog"
       >
-        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div
+          class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+        >
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-2xl" aria-hidden="true">🔗</p>
@@ -34,8 +38,8 @@
             </button>
           </div>
           <p class="mt-3 text-sm leading-6 text-gray-600">
-            Invialo ai partecipanti e conservalo in una chat: senza il link non sarà possibile
-            ritrovare questo gruppo su un altro dispositivo.
+            Invialo ai partecipanti e conservalo: chi ha il link può vedere e modificare il gruppo.
+            Ti servirà per ritrovarlo anche su un altro dispositivo.
           </p>
           <div class="mt-5 grid gap-2 sm:grid-cols-2">
             <a
@@ -110,8 +114,16 @@
           <p class="mt-4 break-all rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
             {{ groupLink }}
           </p>
+          <EmailLinkCard :group-id="groupId" />
+          <button
+            type="button"
+            class="mt-3 min-h-11 w-full text-sm font-medium text-gray-600"
+            @click="closeShareDialog"
+          >
+            Continua al gruppo
+          </button>
         </div>
-      </div>
+      </dialog>
 
       <div
         v-if="showCelebration"
@@ -300,6 +312,8 @@
           </button>
         </div>
       </section>
+
+      <GroupGrowthCard v-if="group.status === 'closed'" />
 
       <!-- Tabs -->
       <div class="flex gap-2 mb-6 border-b border-gray-200">
@@ -1123,7 +1137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, watchPostEffect, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   groupsApi,
@@ -1138,6 +1152,8 @@ import {
 } from '../api/groups'
 import DonationFooter from '../components/DonationFooter.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
+import EmailLinkCard from '../components/EmailLinkCard.vue'
+import GroupGrowthCard from '../components/GroupGrowthCard.vue'
 import { useFeedbackDialog } from '../composables/useFeedbackDialog'
 import { buildClosingSummary } from '../utils/closingSummary'
 import {
@@ -1169,6 +1185,11 @@ const loading = ref(true)
 const error = ref('')
 const copied = ref(false)
 const showShareDialog = ref(route.query.created === '1')
+const shareDialogElement = ref<HTMLDialogElement | null>(null)
+watchPostEffect(() => {
+  const element = shareDialogElement.value
+  if (showShareDialog.value && element && !element.open) element.showModal()
+})
 const savedLocally = ref(route.query.created === '1' || isRecentGroup(groupId))
 const activeTab = ref('expenses')
 const balancesLoading = ref(false)
@@ -1842,6 +1863,7 @@ function openShareDialog() {
 }
 
 function closeShareDialog() {
+  shareDialogElement.value?.close()
   showShareDialog.value = false
   if (route.query.created === '1') {
     router.replace({ query: { ...route.query, created: undefined } })

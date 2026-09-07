@@ -30,6 +30,9 @@ class Group(Base):
     settlements = relationship(
         "Settlement", back_populates="group", cascade="all, delete-orphan"
     )
+    email_link_challenges = relationship(
+        "EmailLinkChallenge", cascade="all, delete-orphan"
+    )
 
 
 class Member(Base):
@@ -106,3 +109,24 @@ class Settlement(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     group = relationship("Group", back_populates="settlements")
+
+
+class EmailLinkChallenge(Base):
+    __tablename__ = "email_link_challenges"
+    token_hash = Column(String(64), primary_key=True)
+    group_id = Column(
+        String(36),
+        ForeignKey("groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    code_hash = Column(String(64), nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)
+    expires_at = Column(DateTime, nullable=False, index=True)
+
+
+class EmailLinkRateLimit(Base):
+    __tablename__ = "email_link_rate_limits"
+    key = Column(String(64), primary_key=True)
+    count = Column(Integer, nullable=False, default=0)
+    expires_at = Column(DateTime, nullable=False, index=True)

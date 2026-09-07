@@ -51,6 +51,8 @@ La roadmap e ordinata per impatto e dipendenze, non per data rigida. Le funziona
 
 ### Notifiche, PWA e uso continuativo
 
+- [x] Conservare il link via email su richiesta, con verifica del recapito e senza account.
+- [x] Proporre nuovo gruppo e condivisione pubblica di Equa a conti chiusi.
 - [ ] Implementare inviti email con consenso esplicito.
 - [ ] Aggiungere preferenze e digest delle notifiche.
 - [ ] Separare i token di invito dai token di modifica.
@@ -122,7 +124,7 @@ Il caso d'uso principale e un gruppo di persone che usa telefoni diversi durante
 - Persistenza: gruppi, membri, spese e split.
 - API organizzate per gruppi, spese, bilanci e membri.
 - Nessun account, ruolo, sessione utente o audit trail.
-- Nessun sistema di notifiche o invio email.
+- Invio email opzionale e transazionale per conservare il link, previa verifica del recapito; nessuna notifica periodica.
 - Nessuna cronologia locale dei gruppi visitati.
 - Nessun aggiornamento in tempo reale.
 
@@ -695,6 +697,22 @@ La lista deve restare semplice per gruppi piccoli: i filtri appaiono solo quando
 
 **Priorita: media**  
 **Obiettivo: creare ritorni automatici senza trasformare Equa in un servizio invasivo.**
+
+### 8.0 MVP: conserva il link, senza iscrizione
+
+- [x] Proporre l'email facoltativa nel pannello condividi, aperto dopo la creazione.
+- [x] Inviare un codice senza link o dati del gruppo, da confermare nella pagina che lo ha richiesto.
+- [x] Inviare il link soltanto dopo verifica; nessun account, ruolo, newsletter o promemoria automatico.
+- [x] Mantenere recapito e token fuori da cronologia locale e risposte del gruppo.
+- [x] Applicare scadenza, massimo tentativi, consumo singolo e limiti anti-abuso persistenti.
+- [x] Offrire annullamento e comando di pulizia dei record scaduti.
+- [x] A conti chiusi mostrare a tutti le azioni per creare un gruppo vuoto e consigliare la pagina pubblica di Equa.
+- [ ] Valutare un promemoria singolo scelto dall'utente, cancellabile se i conti vengono chiusi prima.
+- [ ] Valutare recupero multi-gruppo via email, distinto dal semplice invio del link.
+
+Questo MVP è distinto dagli inviti ai partecipanti della sezione 8.1 e non riutilizza il loro campo email. Il server conserva solo hash, contatori e scadenze; il recapito è in un token cifrato mantenuto esclusivamente in memoria nel browser durante la verifica. Il link spedito è quello collaborativo corrente e non assegna proprietà del gruppo. La condivisione pubblica non include UUID, nomi o importi del gruppo.
+
+Il rilascio richiede il nuovo endpoint del microservizio email condiviso, token dedicato, informativa privacy specifica e pulizia periodica come descritto in [EMAIL_LINK.md](EMAIL_LINK.md). Nessuna nuova metrica o forma di tracking è introdotta da questo MVP.
 
 ### 8.1 Invito via email
 
