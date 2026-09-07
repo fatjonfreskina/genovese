@@ -119,6 +119,7 @@ Vue 3 · TypeScript · Vite · Tailwind CSS · FastAPI · SQLAlchemy · MySQL
 - [Spese, cambi e bilanci multi-valuta](doc/MULTICURRENCY.md)
 - [Migrazioni database](backend/migrations/README.md)
 - [Metriche anonime](doc/ANALYTICS.md)
+- [Conservazione del link via email: attivazione e privacy](doc/EMAIL_LINK.md)
 
 ## Supporta Equa
 

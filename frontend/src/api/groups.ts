@@ -6,6 +6,16 @@ export interface Member {
   email?: string
 }
 
+export interface EmailLinkOptions {
+  enabled: boolean
+  privacy_url: string | null
+}
+
+export interface EmailLinkChallenge {
+  challenge_token: string
+  expires_in: number
+}
+
 export interface Split {
   member_id: number
   share_amount: number | string
@@ -83,6 +93,20 @@ export interface Settlement {
 }
 
 export const groupsApi = {
+  emailLinkOptions: () => client.get<EmailLinkOptions>('/email-link/options'),
+
+  requestEmailLink: (groupId: string, email: string) =>
+    client.post<EmailLinkChallenge>(`/groups/${groupId}/email-link`, { email }),
+
+  confirmEmailLink: (groupId: string, challengeToken: string, code: string) =>
+    client.post<void>(`/groups/${groupId}/email-link/confirm`, {
+      challenge_token: challengeToken,
+      code,
+    }),
+
+  cancelEmailLink: (groupId: string, challengeToken: string) =>
+    client.post<void>(`/groups/${groupId}/email-link/cancel`, { challenge_token: challengeToken }),
+
   create: (data: {
     name: string
     description?: string
