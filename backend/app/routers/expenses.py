@@ -85,7 +85,7 @@ def resolve_exchange_fields(group, payload, currency, existing=None):
         fields.update(
             exchange_rate=payload.exchange_rate,
             exchange_rate_date=rate_date,
-            exchange_rate_source="manual",
+            exchange_rate_source=payload.exchange_rate_source or "manual",
         )
     elif (
         existing is not None

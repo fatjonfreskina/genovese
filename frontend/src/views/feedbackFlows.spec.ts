@@ -212,6 +212,38 @@ it('keeps multi-currency details progressive and closes with the selected balanc
   expect(groupsApi.updateStatus).toHaveBeenCalledWith('test-group', 'closing', 'unified')
 })
 
+it('saves the automatic rate preview without asking the provider again', async () => {
+  await mount(GroupView)
+  await click('+ Aggiungi spesa')
+
+  const setValue = (selector: string, value: string, event = 'input') => {
+    const element = document.querySelector<HTMLInputElement | HTMLSelectElement>(selector)!
+    element.value = value
+    element.dispatchEvent(new Event(event, { bubbles: true }))
+  }
+  setValue('#expense-description', 'Taxi')
+  setValue('#expense-amount', '1000')
+  setValue('#expense-currency', 'ALL', 'change')
+  setValue('#expense-payer', '1', 'change')
+  await flush()
+
+  expect(groupsApi.getExchangeRate).toHaveBeenCalledExactlyOnceWith(
+    'test-group',
+    'ALL',
+    expect.any(String),
+  )
+  await click('Salva')
+  expect(groupsApi.addExpenseEqual).toHaveBeenCalledExactlyOnceWith(
+    'test-group',
+    expect.objectContaining({
+      exchange_rate: '0.01',
+      exchange_rate_date: '2026-09-02',
+      exchange_rate_source: 'frankfurter',
+    }),
+  )
+  expect(groupsApi.getExchangeRate).toHaveBeenCalledTimes(1)
+})
+
 it.each([
   ['closing', 'Segna come chiuso', 'Chiudi gruppo', 'closed'],
   ['closed', 'Riapri conti', 'Riapri conti', 'active'],

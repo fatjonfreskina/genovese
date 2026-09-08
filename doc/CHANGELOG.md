@@ -7,6 +7,12 @@ Il versionamento segue [Semantic Versioning](https://semver.org/lang/it/).
 
 ---
 
+## [Non rilasciato]
+
+### Corretto
+
+- Il salvataggio conserva il cambio automatico mostrato nell'anteprima, con data e fonte, senza interrogare una seconda volta il provider.
+
 ## [1.7.0] Frontend; Backend - 2026-09-05
 
 ### Aggiunto

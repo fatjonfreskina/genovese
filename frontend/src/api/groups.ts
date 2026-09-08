@@ -29,6 +29,8 @@ export interface ExpenseInput {
   currency?: string
   expense_date?: string
   exchange_rate?: number | string
+  exchange_rate_date?: string
+  exchange_rate_source?: Extract<ExchangeRateSource, 'frankfurter'>
   refresh_exchange_rate?: boolean
 }
 
