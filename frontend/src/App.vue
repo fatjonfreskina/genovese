@@ -15,13 +15,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { applyTheme, saveTheme } from './utils/theme'
 
-const THEME_STORAGE_KEY = 'equa-theme'
 const darkTheme = ref(document.documentElement.classList.contains('dark'))
 
 function toggleTheme() {
   darkTheme.value = !darkTheme.value
-  document.documentElement.classList.toggle('dark', darkTheme.value)
-  localStorage.setItem(THEME_STORAGE_KEY, darkTheme.value ? 'dark' : 'light')
+  applyTheme(darkTheme.value)
+  saveTheme(darkTheme.value)
 }
 </script>

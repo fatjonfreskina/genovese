@@ -4,10 +4,9 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 import { initAnalytics, trackPageview } from './utils/analytics'
+import { applyTheme, prefersDarkTheme } from './utils/theme'
 
-const savedTheme = localStorage.getItem('equa-theme')
-const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
-document.documentElement.classList.toggle('dark', savedTheme ? savedTheme === 'dark' : prefersDark)
+applyTheme(prefersDarkTheme())
 
 const app = createApp(App)
 app.use(createPinia())

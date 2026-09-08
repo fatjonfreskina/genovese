@@ -28,6 +28,24 @@
     @apply bg-amber-950;
   }
 
+  html.dark .text-green-700 {
+    @apply text-green-300;
+  }
+
+  html.dark .text-green-800,
+  html.dark .text-green-900 {
+    @apply text-green-200;
+  }
+
+  html.dark .text-amber-700 {
+    @apply text-amber-300;
+  }
+
+  html.dark .text-amber-800,
+  html.dark .text-amber-900 {
+    @apply text-amber-200;
+  }
+
   html.dark .text-gray-800,
   html.dark .text-gray-900 {
     @apply text-gray-100;
