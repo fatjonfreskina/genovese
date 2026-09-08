@@ -9,9 +9,18 @@ Il versionamento segue [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Aggiunto
+
+- Tema scuro automatico in base alle preferenze di sistema, con controllo manuale persistente sul dispositivo.
+
+### Modificato
+
+- La rimozione di un singolo gruppo dalla cronologia locale richiede ora una conferma e chiarisce che i dati del gruppo non vengono eliminati.
+
 ### Corretto
 
 - Il salvataggio conserva il cambio automatico mostrato nell'anteprima, con data e fonte, senza interrogare una seconda volta il provider.
+- Un partecipante torna rimovibile dopo l'eliminazione dell'unica spesa che lo coinvolge.
 
 ## [1.7.0] Frontend; Backend - 2026-09-05
 

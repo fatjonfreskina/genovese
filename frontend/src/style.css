@@ -1,3 +1,74 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body,
+  html.dark .bg-gray-50 {
+    @apply bg-gray-950;
+  }
+
+  html.dark .bg-white {
+    @apply bg-gray-900;
+  }
+
+  html.dark .bg-gray-100 {
+    @apply bg-gray-800;
+  }
+
+  html.dark .bg-green-50 {
+    @apply bg-green-950;
+  }
+
+  html.dark .bg-amber-50 {
+    @apply bg-amber-950;
+  }
+
+  html.dark .text-gray-800,
+  html.dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+
+  html.dark .text-gray-700 {
+    @apply text-gray-200;
+  }
+
+  html.dark .text-gray-600 {
+    @apply text-gray-300;
+  }
+
+  html.dark .text-gray-500,
+  html.dark .text-gray-400 {
+    color: rgb(156 163 175);
+  }
+
+  html.dark .border-gray-100,
+  html.dark .border-gray-200,
+  html.dark .border-gray-300 {
+    @apply border-gray-700;
+  }
+
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    @apply border-gray-700 bg-gray-800 text-gray-100;
+  }
+
+  html.dark input::placeholder,
+  html.dark textarea::placeholder {
+    color: rgb(107 114 128);
+  }
+
+  html.dark .hover\:bg-gray-50:hover,
+  html.dark .hover\:bg-gray-100:hover {
+    @apply bg-gray-800;
+  }
+
+  html.dark .hover\:bg-green-50:hover {
+    @apply bg-green-950;
+  }
+}

@@ -132,6 +132,23 @@ it('clears only local history and only after confirmation', async () => {
   expect(getRecentGroups()).toHaveLength(0)
 })
 
+it('removes one recent group only after confirmation', async () => {
+  saveRecentGroup(group)
+  await mount(HomeView, '/')
+  const remove = document.querySelector<HTMLButtonElement>(
+    '[aria-label="Rimuovi Vacanza dai gruppi recenti"]',
+  )!
+  remove.click()
+  await flush()
+  expect(document.querySelector('dialog')?.textContent).toContain('Vacanza')
+  await click('Annulla')
+  expect(getRecentGroups()).toHaveLength(1)
+  remove.click()
+  await flush()
+  await click('Rimuovi dai recenti')
+  expect(getRecentGroups()).toHaveLength(0)
+})
+
 it('deletes the named expense only after confirmation and shows API failures', async () => {
   await mount(GroupView)
   const remove = document.querySelector<HTMLButtonElement>('[aria-label="Elimina spesa Cena"]')!
