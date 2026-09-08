@@ -1695,8 +1695,16 @@ async function saveExpense() {
       amount: Number(expenseForm.amount),
       currency: expenseForm.currency,
       expense_date: expenseForm.expense_date,
-      ...(manualRateOverride.value ? { exchange_rate: String(manualRate.value) } : {}),
-      ...(refreshRateRequested.value && !manualRateOverride.value
+      ...(manualRateOverride.value
+        ? { exchange_rate: String(manualRate.value) }
+        : ratePreview.value?.source === 'frankfurter'
+          ? {
+              exchange_rate: ratePreview.value.rate,
+              exchange_rate_date: ratePreview.value.date,
+              exchange_rate_source: ratePreview.value.source,
+            }
+          : {}),
+      ...(refreshRateRequested.value && !manualRateOverride.value && !ratePreview.value
         ? { refresh_exchange_rate: true }
         : {}),
     }

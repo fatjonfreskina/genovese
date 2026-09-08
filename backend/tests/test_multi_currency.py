@@ -121,6 +121,29 @@ def test_original_currency_and_historical_rate_are_saved(db, group, monkeypatch)
     )
 
 
+def test_accepted_automatic_preview_is_saved_without_second_lookup(
+    db, group, monkeypatch
+):
+    monkeypatch.setattr(
+        expenses,
+        "lookup_exchange_rate",
+        lambda *args: pytest.fail("An accepted preview must not be fetched again"),
+    )
+    expense = expenses.add_expense_equal(
+        group.id,
+        make_payload(
+            group,
+            exchange_rate="0.92",
+            exchange_rate_date="2026-01-09",
+            exchange_rate_source="frankfurter",
+        ),
+        db,
+    )
+    assert expense.exchange_rate == Decimal("0.92")
+    assert expense.exchange_rate_date == date(2026, 1, 9)
+    assert expense.exchange_rate_source == "frankfurter"
+
+
 def test_provider_failure_saves_original_but_blocks_unified(db, group, monkeypatch):
     monkeypatch.setattr(expenses, "lookup_exchange_rate", lambda *args: None)
     expense = expenses.add_expense_equal(group.id, make_payload(group), db)

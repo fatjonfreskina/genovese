@@ -54,6 +54,7 @@ class ExpenseFields(BaseModel):
     expense_date: Optional[date] = None
     exchange_rate: Optional[Decimal] = None
     exchange_rate_date: Optional[date] = None
+    exchange_rate_source: Optional[Literal["frankfurter"]] = None
     refresh_exchange_rate: bool = False
 
     @field_validator("currency")
