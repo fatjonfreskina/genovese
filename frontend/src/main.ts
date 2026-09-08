@@ -4,6 +4,9 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 import { initAnalytics, trackPageview } from './utils/analytics'
+import { applyTheme, prefersDarkTheme } from './utils/theme'
+
+applyTheme(prefersDarkTheme())
 
 const app = createApp(App)
 app.use(createPinia())
